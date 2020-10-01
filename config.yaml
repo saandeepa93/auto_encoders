@@ -1,0 +1,9 @@
+path:
+  input: ./input
+  output: ./output
+
+params:
+  in_channels: 3
+  out_channels: 3
+  img_size: 512
+  hidden_feats: [64, 128, 64]
