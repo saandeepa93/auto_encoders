@@ -48,14 +48,14 @@ def train_data(configs):
       loss.backward()
       train_loss+=loss.item()
       optimizer.step()
-      # print(f'loss at epoch {i} batch {b}: {loss.item()/len(img)}')
-  #   print(f"loss at epoch {i}: {train_loss/len(train_loader)}")
-  #   with torch.no_grad():
-  #     sample = torch.randn(64, 128, 1, 1)
-  #     sample = model.decoder(sample)
-  #     save_image(sample.view(64, 1, 28, 28), f'./results/{i}.png')
+      print(f'loss at epoch {i} batch {b}: {loss.item()/len(img)}')
+    print(f"loss at epoch {i}: {train_loss/len(train_loader)}")
+    with torch.no_grad():
+      sample = torch.randn(64, 128, 1, 1)
+      sample = model.decoder(sample)
+      save_image(sample.view(64, 1, 28, 28), f'./results/{i}.png')
 
 
-  # torch.save(model.state_dict(), "./models/vae.pt")
+  torch.save(model.state_dict(), "./models/vae.pt")
 
 

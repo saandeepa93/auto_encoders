@@ -6,10 +6,10 @@ from sys import exit as e
 
 
 class DownBlock(nn.Module):
-  def __init__(self, in_channel, out_channel):
+  def __init__(self, in_channel, out_channel, k, str, p):
     super(DownBlock, self).__init__()
     self.encoder = nn.Sequential(
-      nn.Conv2d(in_channel, out_channel, kernel_size = 4, stride = 2),
+      nn.Conv2d(in_channel, out_channel, kernel_size = k, stride = str, padding = p),
       nn.ReLU()
     )
 
@@ -19,10 +19,10 @@ class DownBlock(nn.Module):
 
 
 class UpBlock(nn.Module):
-  def __init__(self, in_channel, out_channel):
+  def __init__(self, in_channel, out_channel, k, str, p):
     super(UpBlock, self).__init__()
     self.decoder = nn.Sequential(
-      nn.ConvTranspose2d(in_channel, out_channel, kernel_size = 5, stride = 2),
+      nn.ConvTranspose2d(in_channel, out_channel, kernel_size = k, stride = str, padding = p),
       nn.ReLU()
     )
 
@@ -33,26 +33,23 @@ class UpBlock(nn.Module):
 class Encoder(nn.Module):
   def __init__(self, in_channel, size, base_channel):
     super(Encoder, self).__init__()
-    encode_blocks = []
+    encoder_blocks = []
     for i in range(int(np.log2(size)) - 2):
       inc = in_channel if i==0 else (2**(i-1)) * base_channel
-      outc = base_channel if i==0 else (2 ** (i)) * base_channel
-      encode_blocks.append(DownBlock(inc, outc))
+      outc = (2**(i)) * base_channel
+      encoder_blocks.append(DownBlock(inc, outc, 4, 2, 1))
     else:
-      self.final_encode = outc
-    self.encoder = nn.ModuleList(encode_blocks)
-    self.final_layer = nn.Conv2d(outc, outc, kernel_size = (2, 2), stride = 1)
+      self.final_channel = outc
+
+    self.encoder_blocks = nn.ModuleList(encoder_blocks)
+    self.final_encoder = nn.Conv2d(self.final_channel, self.final_channel, 4, 2, 0)
 
 
   def forward(self, x):
     out = x
-    print(out.size())
-    for block in self.encoder:
+    for block in self.encoder_blocks:
       out = block(out)
-      print(out.size())
-    out = self.final_layer(out)
-    print(out.size())
-    print("-"*20)
+    out = self.final_encoder(out)
     h = out.view(out.size(0), -1)
     return h
 
@@ -62,24 +59,22 @@ class Decoder(nn.Module):
     super(Decoder, self).__init__()
     decode_blocks = []
     inc = in_channel
-    for i in range(int(np.log2(size)) - 3):
-      inc = in_channel if i==0 else in_channel//(2**i)
-      outc = (inc//2)
-      decode_blocks.append(UpBlock(inc, outc))
+    for i in range(int(np.log2(size)) - 2):
+      inc = in_channel if i<=1 else in_channel//(2**(i-1))
+      outc = in_channel if i==0 else (inc//2)
+      k = 6 if i ==0 else 4
+      st = 3 if i==0 else 2
+      decode_blocks.append(UpBlock(inc, outc, k, st, 1))
     else:
       final_channel = outc
     self.decoder = nn.ModuleList(decode_blocks)
-    self.final_layer = nn.ConvTranspose2d(final_channel, out_channel, kernel_size = 6, stride = 2)
+    self.final_layer = nn.ConvTranspose2d(final_channel, out_channel, kernel_size = 4, stride = 2, padding = 1)
 
   def forward(self, x):
     out = x
-    print(out.size())
     for block in self.decoder:
       out = block(out)
-      print(out.size())
     out = self.final_layer(out)
-    print(out.size())
-    e()
     out = torch.sigmoid(out)
     return out
 
@@ -91,7 +86,7 @@ class VAE_CNN(nn.Module):
     z_dim = base_channel
 
     self.encoder = Encoder(in_channel, size, base_channel)
-    h_dim = self.encoder.final_encode
+    h_dim = self.encoder.final_channel
     self.mu = nn.Linear(h_dim, z_dim)
     self.sigma = nn.Linear(h_dim, z_dim)
 
@@ -107,14 +102,8 @@ class VAE_CNN(nn.Module):
 
   def forward(self, x):
     h = self.encoder(x)
-    print(h.size())
     z, mu, logvar = self.reparameterize(h)
-    print(z.size())
     z = self.latent(z)
-    print(z.size())
     z = z.view(z.size(0), z.size(1), 1, 1)
-
     x = self.decoder(z)
-    print(x.size())
-    e()
     return x, mu, logvar

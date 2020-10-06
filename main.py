@@ -1,4 +1,5 @@
 import click
+import torch
 
 from modules.util import get_config
 from modules.train import train_data

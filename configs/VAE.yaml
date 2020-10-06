@@ -4,7 +4,7 @@ paths:
 params:
   in_channel: 3
   base_channel: 32
-  lr: 1e-3
+  lr: 1e-2
   epochs: 50
   img_size: 512
   ext: .jpg
